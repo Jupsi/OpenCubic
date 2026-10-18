@@ -1,3 +1,15 @@
+### This fork of OpenCubic has macOS support and a force flashing option.
+
+If you're using an **ACE 2 Pro** (Gen 2) with a **Kobra S1** the flasher in the upstream repository won't let you.
+
+A force override option has been added (I needed it for the case above) which will bypass the Gen 1 / Gen 2 check, but I don't know what would happen if you flash the wrong firmware. (Stuck in bootloader or brick probably.)
+
+Flashing in macOS is the same as flashing in Linux more or less, install Homebrew, then Qt and all other build dependencies.
+
+You'll need to codesign the app package. You can get 1-week valid certificates for free with any iCloud account.
+
+Set everything up from Xcode and build as if you're building for Linux. (Add Qt and other dependencies to your path)
+
 # OpenCubic — ACE Custom Firmware (Gen 1 + Gen 2)
 
 Custom firmware (CFW) for the Anycubic **ACE 1 Pro** (Gen 1) and **ACE 2 Pro** (Gen 2) filament
