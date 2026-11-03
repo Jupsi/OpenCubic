@@ -7,16 +7,23 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-# Qt 5.15.2 msvc2019_64 — override with -DCMAKE_PREFIX_PATH=<path>
-if(NOT DEFINED CMAKE_PREFIX_PATH)
+# Official builds: Windows, Qt 5.15.2 msvc2019_64 — override with -DCMAKE_PREFIX_PATH=<path>.
+# macOS / Linux (community-supported): pass your Qt 5 location via CMAKE_PREFIX_PATH,
+# e.g. -DCMAKE_PREFIX_PATH="$(brew --prefix qt@5)".
+if(WIN32 AND NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH "E:/Qt/5.15.2/msvc2019_64")
 endif()
 
 find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Network)
 
+# AES-128-CBC for Discovery: BCrypt (Windows), CommonCrypto (macOS), OpenSSL libcrypto (Linux)
+if(UNIX AND NOT APPLE)
+    find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+endif()
+
 add_subdirectory(third_party)
 
-add_executable(AceFlashTool WIN32
+add_executable(AceFlashTool WIN32 MACOSX_BUNDLE
     main.cpp
     core/discovery.cpp
     core/firmware_file.cpp
@@ -43,24 +50,53 @@ target_link_libraries(AceFlashTool PRIVATE
     Qt5::Widgets
     Qt5::Network
     qmqtt
-    Bcrypt       # Windows AES-128-CBC for Discovery
 )
-
-# OpenSSL 1.1.1 DLLs — not bundled with Qt 5.15 MSVC; typically found in Qt Creator's bin dir
-# Override with -DOPENSSL_SRC=<path> if your installation differs
-if(NOT DEFINED OPENSSL_SRC)
-    set(OPENSSL_SRC "E:/Qt/Tools/QtCreator/bin")
+if(WIN32)
+    target_link_libraries(AceFlashTool PRIVATE Bcrypt)            # AES-128-CBC for Discovery
+elseif(NOT APPLE)
+    target_link_libraries(AceFlashTool PRIVATE OpenSSL::Crypto)   # AES-128-CBC for Discovery
 endif()
-foreach(SSL_DLL libssl-1_1-x64.dll libcrypto-1_1-x64.dll)
-    if(EXISTS "${OPENSSL_SRC}/${SSL_DLL}")
-        add_custom_command(TARGET AceFlashTool POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${OPENSSL_SRC}/${SSL_DLL}"
-                "$<TARGET_FILE_DIR:AceFlashTool>/${SSL_DLL}"
-            COMMENT "Deploying ${SSL_DLL}"
-        )
+# (macOS: CommonCrypto is part of libSystem — nothing to link)
+
+# ── macOS app bundle (community-supported, contributed in PR #6) ──────────────
+if(APPLE)
+    set_target_properties(AceFlashTool PROPERTIES
+        MACOSX_BUNDLE_BUNDLE_NAME          "ACE Flash Tool"
+        MACOSX_BUNDLE_BUNDLE_VERSION       "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_GUI_IDENTIFIER       "org.anycubic-cfw.AceFlashTool"
+        MACOSX_BUNDLE_INFO_PLIST           "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
+    )
+    # Apple Silicon requires signed binaries. Default "-" = ad-hoc signature (no Apple account).
+    # Pass -DACEFLASHTOOL_CODESIGN_IDENTITY="Apple Development: ..." to sign with your own identity.
+    set(ACEFLASHTOOL_CODESIGN_IDENTITY "-" CACHE STRING "codesign identity for the .app (\"-\" = ad-hoc)")
+    add_custom_command(TARGET AceFlashTool POST_BUILD
+        COMMAND codesign --force --deep --sign "${ACEFLASHTOOL_CODESIGN_IDENTITY}"
+            --entitlements "${CMAKE_CURRENT_SOURCE_DIR}/macos/AceFlashTool.entitlements"
+            --timestamp=none
+            "$<TARGET_BUNDLE_DIR:AceFlashTool>"
+        COMMENT "Signing AceFlashTool.app (${ACEFLASHTOOL_CODESIGN_IDENTITY})"
+        VERBATIM
+    )
+endif()
+
+# OpenSSL 1.1.1 DLLs (Windows only) — not bundled with Qt 5.15 MSVC; typically found in
+# Qt Creator's bin dir. Override with -DOPENSSL_SRC=<path> if your installation differs.
+if(WIN32)
+    if(NOT DEFINED OPENSSL_SRC)
+        set(OPENSSL_SRC "E:/Qt/Tools/QtCreator/bin")
     endif()
-endforeach()
+    foreach(SSL_DLL libssl-1_1-x64.dll libcrypto-1_1-x64.dll)
+        if(EXISTS "${OPENSSL_SRC}/${SSL_DLL}")
+            add_custom_command(TARGET AceFlashTool POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${OPENSSL_SRC}/${SSL_DLL}"
+                    "$<TARGET_FILE_DIR:AceFlashTool>/${SSL_DLL}"
+                COMMENT "Deploying ${SSL_DLL}"
+            )
+        endif()
+    endforeach()
+endif()
 
 # Copy Qt DLLs to output directory after build
 if(WIN32)

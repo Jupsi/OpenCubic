@@ -14,10 +14,20 @@ static QString prettyJson(const QByteArray& data)
     if (doc.isNull()) return QString::fromUtf8(data);
     return doc.toJson(QJsonDocument::Indented).trimmed();
 }
-// Windows BCrypt for AES-128-CBC
+// AES-128-CBC backend per platform:
+//   Windows: BCrypt (system) — official release builds
+//   macOS:   CommonCrypto (system)
+//   Linux:   OpenSSL libcrypto
+// macOS/Linux support contributed by ozgunawesome (PR #6); community-supported.
+#if defined(Q_OS_WIN)
 #include <windows.h>
 #include <bcrypt.h>
 #pragma comment(lib, "Bcrypt.lib")
+#elif defined(Q_OS_MACOS)
+#include <CommonCrypto/CommonCryptor.h>
+#else
+#include <openssl/evp.h>
+#endif
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,16 +51,58 @@ QString Discovery::md5Hex(const QByteArray& data)
     return QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex();
 }
 
-// ── AES-128-CBC Decrypt via Windows BCrypt ────────────────────────────────────
+// ── AES-128-CBC Decrypt (PKCS#7 padding) ──────────────────────────────────────
 
 QByteArray Discovery::aes128CbcDecrypt(const QByteArray& cipher,
                                         const QByteArray& key,
                                         const QByteArray& iv)
 {
-    // We need a writable IV copy (BCrypt modifies it)
+    if (cipher.isEmpty() || cipher.size() % 16 != 0)
+        return {};
+
+    // Writable, exactly 16-byte copies (BCrypt modifies the IV)
     QByteArray ivCopy = iv.left(16).leftJustified(16, '\0');
     QByteArray keyCopy = key.left(16).leftJustified(16, '\0');
 
+#if defined(Q_OS_MACOS)
+    QByteArray plain(cipher.size() + 16, '\0');
+    size_t plainLen = 0;
+    const CCCryptorStatus ccStatus = CCCrypt(
+        kCCDecrypt, kCCAlgorithmAES, kCCOptionPKCS7Padding,
+        keyCopy.constData(), kCCKeySizeAES128,
+        ivCopy.constData(),
+        cipher.constData(), static_cast<size_t>(cipher.size()),
+        plain.data(), static_cast<size_t>(plain.size()), &plainLen);
+    if (ccStatus != kCCSuccess)
+        return {};
+    plain.resize(static_cast<int>(plainLen));
+    return plain;
+
+#elif !defined(Q_OS_WIN)
+    QByteArray plain(cipher.size() + 16, '\0');
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx)
+        return {};
+    int decryptedLen = 0;
+    int finalLen = 0;
+    const bool ok =
+        EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr,
+                           reinterpret_cast<const unsigned char*>(keyCopy.constData()),
+                           reinterpret_cast<const unsigned char*>(ivCopy.constData())) == 1 &&
+        EVP_DecryptUpdate(ctx,
+                          reinterpret_cast<unsigned char*>(plain.data()), &decryptedLen,
+                          reinterpret_cast<const unsigned char*>(cipher.constData()),
+                          cipher.size()) == 1 &&
+        EVP_DecryptFinal_ex(ctx,
+                            reinterpret_cast<unsigned char*>(plain.data()) + decryptedLen,
+                            &finalLen) == 1;
+    EVP_CIPHER_CTX_free(ctx);
+    if (!ok)
+        return {};
+    plain.resize(decryptedLen + finalLen);
+    return plain;
+
+#else
     BCRYPT_ALG_HANDLE  hAlg  = nullptr;
     BCRYPT_KEY_HANDLE  hKey  = nullptr;
     NTSTATUS           status;
@@ -98,6 +150,7 @@ QByteArray Discovery::aes128CbcDecrypt(const QByteArray& cipher,
     if (!BCRYPT_SUCCESS(status)) return {};
     plain.resize(plainLen);
     return plain;
+#endif
 }
 
 // ── Discovery flow ────────────────────────────────────────────────────────────
