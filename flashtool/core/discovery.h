@@ -28,7 +28,7 @@ public:
     explicit Discovery(QObject* parent = nullptr);
 
     // Starts port-18910 flow: GET /info → POST /ctrl → AES-CBC decrypt
-    void discover(const QString& ip, const uint64_t port);
+    void discover(const QString& ip);
 
 signals:
     void credentialsReady(const PrinterCredentials& creds);
@@ -36,7 +36,7 @@ signals:
     void httpLog(const QString& entry);   // ">> GET url" / "<< 200 body..."
 
 private:
-    void postCtrl(const QString& ip, const uint64_t port, const QString& token);
+    void postCtrl(const QString& ip, const QString& token);
     static QByteArray aes128CbcDecrypt(const QByteArray& cipher,
                                         const QByteArray& key,
                                         const QByteArray& iv);

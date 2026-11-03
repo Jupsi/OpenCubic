@@ -1,22 +1,10 @@
-### This fork of OpenCubic has macOS support and a force flashing option.
-
-If you're using an **ACE 2 Pro** (Gen 2) with a **Kobra S1** the flasher in the upstream repository won't let you.
-
-A force override option has been added (I needed it for the case above) which will bypass the Gen 1 / Gen 2 check, but I don't know what would happen if you flash the wrong firmware. (Stuck in bootloader or brick probably.)
-
-Flashing in macOS is the same as flashing in Linux more or less, install Homebrew, then Qt and all other build dependencies.
-
-You'll need to codesign the app package. You can get 1-week valid certificates for free with any iCloud account.
-
-Set everything up from Xcode and build as if you're building for Linux. (Add Qt and other dependencies to your path)
-
 # OpenCubic — ACE Custom Firmware (Gen 1 + Gen 2)
 
 Custom firmware (CFW) for the Anycubic **ACE 1 Pro** (Gen 1) and **ACE 2 Pro** (Gen 2) filament
 management systems (GD32F303, FreeRTOS).
 
 > **Download the latest firmware:** See [Releases](https://github.com/Jupsi/OpenCubic/releases)  
-> Latest: **ACE 2 Pro CFW v1.0.4** · **ACE 1 Pro CFW v1.0** · **ACE Flash Tool v1.0.1**
+> Latest: **ACE 2 Pro CFW v1.0.6** · **ACE 1 Pro CFW v1.1.1** · **ACE Flash Tool v1.0.3**
 
 ---
 
@@ -27,12 +15,13 @@ management systems (GD32F303, FreeRTOS).
 Each generation has its own firmware:
 
 - **ACE 1 Pro (Gen 1):** `ACE_V…_….bin` — KlipperGo-stack printers (e.g. Kobra 3, Kobra S1)
-- **ACE 2 Pro (Gen 2):** `ACE2_V…_….bin` — AVATA-stack printers (e.g. Kobra X)
+- **ACE 2 Pro (Gen 2):** `ACE2_V…_….bin` — AVATA-stack printers (e.g. Kobra X) and KlipperGo-stack
+  printers with ACE 2 Pro support (e.g. Kobra S1 Max)
 
 Flashing the **wrong generation's** firmware onto an ACE **will soft-brick the device**. The Flash
-Tool blocks obvious mismatches (a `ACE_V…` Gen 1 image on an AVATA printer, or an `ACE2_V…` Gen 2
-image on a KlipperGo printer), but this is a safeguard — **it remains your responsibility to check
-which ACE you own and pick the matching `.bin`.**
+Tool blocks obvious mismatches (a `ACE_V…` Gen 1 image on an AVATA printer, or — when the printer
+reports the model of the connected ACE — an image that does not match that ACE), but this is a
+safeguard — **it remains your responsibility to check which ACE you own and pick the matching `.bin`.**
 
 > Recovery without a hardware flash programmer is normally possible: an OTA flash never overwrites the
 > bootloader, so a unit that fails to boot falls back to update mode and can be re-flashed over the
@@ -102,6 +91,50 @@ cmake -S . -B build \
   -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64" \
   -DOPENSSL_SRC="C:/Qt/Tools/QtCreator/bin"
 ```
+
+#### Building on macOS / Linux (community-supported)
+
+Official releases are **Windows only**. The Flash Tool also builds on macOS and Linux, but these
+builds are not tested by the maintainer — use at your own risk. macOS support was contributed by
+[@ozgunawesome](https://github.com/ozgunawesome) ([#6](https://github.com/Jupsi/OpenCubic/pull/6)).
+
+The MQTT client is a git submodule — clone with submodules first (on every platform):
+
+```bash
+git clone --recurse-submodules https://github.com/Jupsi/OpenCubic.git
+# or, in an existing clone:
+git submodule update --init
+```
+
+**macOS** (Apple Silicon or Intel, [Homebrew](https://brew.sh)):
+
+```bash
+brew install cmake qt@5
+cd flashtool
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt@5)"
+cmake --build build
+open build/AceFlashTool.app
+```
+
+- The app is signed **ad-hoc** by default (required on Apple Silicon, no Apple account needed).
+  To sign with your own identity: `-DACEFLASHTOOL_CODESIGN_IDENTITY="Apple Development: …"`.
+- On first start, allow **Local Network** access when macOS asks — otherwise the printer can't be found.
+- The app links against your Homebrew Qt. To get a self-contained `.app`, run
+  `"$(brew --prefix qt@5)/bin/macdeployqt" build/AceFlashTool.app` and re-sign it.
+
+**Linux** (Debian/Ubuntu example):
+
+```bash
+sudo apt install build-essential cmake qtbase5-dev libssl-dev
+cd flashtool
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/AceFlashTool
+```
+
+On all platforms the printer must be in **LAN mode** (the discovery port 18910 is closed in cloud mode),
+and your firewall must allow incoming connections — the printer downloads the firmware from the tool's
+built-in HTTP server.
 
 ---
 

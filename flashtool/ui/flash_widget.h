@@ -1,6 +1,7 @@
 #pragma once
 #include <QWidget>
 #include <QTimer>
+#include <QHash>
 #include <memory>
 #include "../core/discovery.h"
 #include "../core/firmware_file.h"
@@ -41,6 +42,7 @@ private:
 
     // Flash
     void updateFlashButton();
+    QString mismatchReason() const;   // empty = image/printer/ACE combination is allowed
     void updateAceIdSpinner();
     void flashDone(bool success);
 
@@ -67,6 +69,7 @@ private:
     bool    m_gotAceInfo  = false;
     bool    m_printerFree = true;
     int     m_aceCount    = 0;
+    QHash<int, int> m_aceModelIds;   // ACE id -> model_id (40001/40002), if reported by the printer
     QTimer  m_testTimer;
 
     // Flash state

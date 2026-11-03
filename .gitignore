@@ -7,5 +7,3 @@ flashtool/third_party/qmqtt/
 *.zip
 .vscode/settings.json
 .DS_Store
-.cache
-

@@ -7,7 +7,8 @@ printer and the firmware generation.
 
 - An Anycubic ACE connected to a supported printer:
   - **ACE 1 Pro (Gen 1)** — KlipperGo-stack printers (e.g. Kobra 3, Kobra S1)
-  - **ACE 2 Pro (Gen 2)** — AVATA-stack printers (e.g. Kobra X)
+  - **ACE 2 Pro (Gen 2)** — AVATA-stack printers (e.g. Kobra X) and KlipperGo-stack printers with
+    ACE 2 Pro support (e.g. Kobra S1 Max)
 - Printer must be in **LAN mode** (not connected to the Anycubic cloud)
 - Printer and PC on the same local network
 - ACE Flash Tool — download the pre-built Windows binary from
@@ -27,9 +28,10 @@ printer and the firmware generation.
 
 The ACE will reboot automatically after flashing (~30 seconds).
 
-> **Mismatch protection:** the tool blocks generation mismatches to prevent a soft-brick — e.g. a
-> Gen 1 `ACE_V…` image on an ACE 2 Pro / AVATA printer, or a Gen 2 `ACE2_V…` image on a KlipperGo
-> printer. Use the `.bin` that matches your ACE.
+> **Mismatch protection:** the tool blocks generation mismatches to prevent a soft-brick — a Gen 1
+> `ACE_V…` image on an AVATA printer, and, when the printer reports the model of the connected ACE
+> (shown as `model=…` in the Test Connection log), any image that does not match that ACE.
+> Use the `.bin` that matches your ACE.
 
 ## Recovery
 

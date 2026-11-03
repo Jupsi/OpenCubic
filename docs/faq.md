@@ -2,13 +2,24 @@
 
 **Q: Which ACE / printers are supported?**  
 A: Both **ACE 1 Pro** (Gen 1, on KlipperGo-stack printers such as Kobra 3 / Kobra S1) and
-**ACE 2 Pro** (Gen 2, on AVATA-stack printers such as Kobra X). Use the matching firmware:
-`ACE_V…` for Gen 1, `ACE2_V…` for Gen 2.
+**ACE 2 Pro** (Gen 2, on AVATA-stack printers such as Kobra X, and on KlipperGo-stack printers with
+ACE 2 Pro support such as Kobra S1 Max). Use the firmware that matches **your ACE**, not your
+printer: `ACE_V…` for Gen 1, `ACE2_V…` for Gen 2.
 
 **Q: Does this work with ACE Gen 2 (ACE 2 Pro)?**  
-A: Yes. The ACE 2 Pro CFW (v1.0.4) and Flash Tool v1.0.1+ add Gen 2 support. Anycubic and Bambu Lab
+A: Yes. The ACE 2 Pro CFW (v1.0.4+) and Flash Tool v1.0.1+ add Gen 2 support. Anycubic and Bambu Lab
 spools are confirmed working; the other open vendors (OpenSpool, OpenPrintTag, Elegoo, TigerTag) are
 implemented but not yet tested on real tags.
+
+**Q: My printer is a KlipperGo printer (e.g. Kobra S1 Max) with an ACE 2 Pro — can I flash it?**  
+A: Yes, with Flash Tool **v1.0.3+**. Earlier versions did not recognize the Kobra S1 Max and blocked
+`ACE2_V…` images on KlipperGo printers. Flashing then ended with `update-failed` right after the
+download ([#1](https://github.com/Jupsi/OpenCubic/issues/1)).
+
+**Q: Flashing ends with `update-failed` right after the download**  
+A: Update to the latest Flash Tool first. v1.0.2 fixed this for printer firmware 2.7+ (`model_id`),
+v1.0.3 for the Kobra S1 Max / Kobra S1 V2 / Kobra 3 Max V2 (printer not recognized). If it still
+fails, open an issue with the complete Flash Tool log.
 
 **Q: My Bambu spool is not recognized**  
 A: The firmware uses maximum TX power and RX gain for better read range. If the spool is still not
