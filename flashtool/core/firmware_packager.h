@@ -4,8 +4,9 @@
 
 // Printer stack determines the container format
 enum class PrinterStack {
-    KlipperGo,  // Kobra 3, Kobra 3 Max, Kobra 3 V2, Kobra S1 — modeId 20024/20025/20026/20027
-    Avata,      // Kobra X, Kobra 4 — modeId 20030/20031
+    KlipperGo,  // Kobra 3, Kobra 3 Max, Kobra 3 V2, Kobra S1, Kobra S1 Max, Kobra S1 V2, Kobra 3 Max V2
+                // — modeId 20024/20025/20026/20027/20029/20031/20032
+    Avata,      // Kobra X — modeId 20030
     Unknown,
 };
 

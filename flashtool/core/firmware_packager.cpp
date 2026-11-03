@@ -13,9 +13,11 @@ PrinterStack printer_stack_from_model_id(const QString& modelId)
     case 20026: // Kobra 3
     case 20025: // Kobra S1
     case 20027: // Kobra 3 Max?
+    case 20029: // Kobra S1 Max
+    case 20031: // Kobra S1 V2
+    case 20032: // Kobra 3 Max V2
         return PrinterStack::KlipperGo;
     case 20030: // Kobra X
-    case 20031: // Unknown but existing
         return PrinterStack::Avata;
     default:
         return PrinterStack::Unknown;

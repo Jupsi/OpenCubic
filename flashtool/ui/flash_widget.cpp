@@ -37,6 +37,8 @@ FlashWidget::FlashWidget(QWidget* parent)
     ui->setupUi(this);
     connect(ui->btnBrowse, &QPushButton::clicked, this, &FlashWidget::onBrowseClicked);
     connect(ui->btnFlash,  &QPushButton::clicked, this, &FlashWidget::onFlashClicked);
+    connect(ui->spinAceId, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, [this](int) { updateFlashButton(); });
 
     connect(&m_mqtt, &MqttClient::connected,       this, &FlashWidget::onMqttConnected);
     connect(&m_mqtt, &MqttClient::messageReceived, this, &FlashWidget::onMqttMessage);
@@ -88,17 +90,36 @@ void FlashWidget::updateAceIdSpinner()
     ui->labelAceIdLbl->setVisible(show);
 }
 
+QString FlashWidget::mismatchReason() const
+{
+    const bool isAce = (m_fw.target == FlashTarget::AceGen1 || m_fw.target == FlashTarget::AceGen2);
+    if (!isAce) return {};
+
+    // AVATA stack only drives ACE 2 Pro (Gen 2).
+    // KlipperGo stack drives both generations (newer printer FW, e.g. Kobra S1 Max with ACE 2 Pro);
+    // the OTA container is identical for ACE_V... and ACE2_V... images.
+    if (m_creds.stack() == PrinterStack::Avata && m_fw.target == FlashTarget::AceGen1)
+        return QStringLiteral("AVATA stack (ACE 2 Pro) needs an ACE2_V... image.");
+
+    // If the printer reports the hub model, the image must match the selected ACE.
+    const int aceId = ui->spinAceId->value();
+    const int hubModel = m_aceModelIds.value(aceId, 0);
+    const int fwModel  = (m_fw.target == FlashTarget::AceGen2) ? 40002 : 40001;
+    if ((hubModel == 40001 || hubModel == 40002) && hubModel != fwModel)
+        return QStringLiteral("ACE%1 is an %2, but the image is for an %3.")
+            .arg(aceId)
+            .arg(hubModel == 40002 ? QStringLiteral("ACE 2 Pro (Gen 2)") : QStringLiteral("ACE 1 Pro (Gen 1)"))
+            .arg(fwModel  == 40002 ? QStringLiteral("ACE 2 Pro (ACE2_V...)") : QStringLiteral("ACE 1 Pro (ACE_V...)"));
+
+    return {};
+}
+
 void FlashWidget::updateFlashButton()
 {
-    // Both ACE generations are supported. Enable flashing unless the image and the
-    // detected printer stack are a generation mismatch that would soft-brick the unit
-    // (AVATA stack expects an ACE2_V... Gen 2 image; KlipperGo expects an ACE_V... Gen 1 image).
-    const bool mismatch =
-        (m_creds.stack() == PrinterStack::Avata     && m_fw.target == FlashTarget::AceGen1) ||
-        (m_creds.stack() == PrinterStack::KlipperGo  && m_fw.target == FlashTarget::AceGen2);
+    // Enable flashing unless the image does not match the printer stack / connected ACE.
     ui->btnFlash->setEnabled(
         m_fw.isValid()
-        && !mismatch
+        && mismatchReason().isEmpty()
         && m_state == State::Ready
         && m_printerFree);
 }
@@ -126,6 +147,7 @@ void FlashWidget::startTest(const PrinterCredentials& creds)
     m_gotAceInfo      = false;
     m_printerFree     = true;
     m_aceCount        = 0;
+    m_aceModelIds.clear();
     updateAceIdSpinner();
 
     ui->logView->clear();
@@ -238,12 +260,21 @@ void FlashWidget::onMqttMessage(const QString& topic, const QByteArray& payload)
             log(QStringLiteral("  ACE Units    : %1").arg(boxes.size()));
             m_gotAceInfo = true;
             m_aceCount   = boxes.size();
+            m_aceModelIds.clear();
             for (int bi = 0; bi < boxes.size(); ++bi) {
                 QJsonObject aceBox = boxes[bi].toObject();
-                log(QStringLiteral("    ACE%1  status=%2  temp=%3 C")
-                    .arg(aceBox[QStringLiteral("id")].toInt())
+                const int aceId   = aceBox[QStringLiteral("id")].toInt();
+                const int modelId = aceBox[QStringLiteral("model_id")].toInt(0);   // newer printer FW only
+                if (modelId > 0) m_aceModelIds.insert(aceId, modelId);
+                const QString modelStr =
+                    modelId == 40002 ? QStringLiteral("  model=ACE 2 Pro") :
+                    modelId == 40001 ? QStringLiteral("  model=ACE 1 Pro") :
+                    modelId > 0      ? QStringLiteral("  model=%1").arg(modelId) : QString();
+                log(QStringLiteral("    ACE%1  status=%2  temp=%3 C%4")
+                    .arg(aceId)
                     .arg(aceBox[QStringLiteral("status")].toInt())
-                    .arg(aceBox[QStringLiteral("temp")].toInt()));
+                    .arg(aceBox[QStringLiteral("temp")].toInt())
+                    .arg(modelStr));
 
                 QJsonArray aceSlots = aceBox[QStringLiteral("slots")].toArray();
                 for (int si = 0; si < aceSlots.size(); ++si) {
@@ -323,6 +354,9 @@ void FlashWidget::onBrowseClicked()
     ui->labelFile->setText(m_fw.name);
     updateAceIdSpinner();
     updateFlashButton();
+    const QString mismatch = mismatchReason();
+    if (!mismatch.isEmpty())
+        log(QStringLiteral("WARN Flashing disabled: ") + mismatch);
 }
 
 // ── Flash ─────────────────────────────────────────────────────────────────────
@@ -331,15 +365,12 @@ void FlashWidget::onFlashClicked()
 {
     if (m_state != State::Ready) return;
 
-    // Safety guard: block only stack/generation mismatches (each generation flashes its own image).
-    const bool mismatch =
-        (m_creds.stack() == PrinterStack::Avata     && m_fw.target == FlashTarget::AceGen1) ||
-        (m_creds.stack() == PrinterStack::KlipperGo  && m_fw.target == FlashTarget::AceGen2);
-    if (mismatch) {
+    // Safety guard: block image / stack / ACE generation mismatches.
+    const QString mismatch = mismatchReason();
+    if (!mismatch.isEmpty()) {
         QMessageBox::critical(this, QStringLiteral("Error"),
-            QStringLiteral("Firmware / printer mismatch — flashing blocked to prevent soft-brick.\n"
-                           "AVATA stack (ACE Gen 2) needs an ACE2_V... image;\n"
-                           "KlipperGo stack (ACE Gen 1) needs an ACE_V... image."));
+            QStringLiteral("Firmware / printer mismatch — flashing blocked to prevent soft-brick.\n")
+            + mismatch);
         return;
     }
 

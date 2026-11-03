@@ -4,7 +4,7 @@ Custom firmware (CFW) for the Anycubic **ACE 1 Pro** (Gen 1) and **ACE 2 Pro** (
 management systems (GD32F303, FreeRTOS).
 
 > **Download the latest firmware:** See [Releases](https://github.com/Jupsi/OpenCubic/releases)  
-> Latest: **ACE 2 Pro CFW v1.0.4** · **ACE 1 Pro CFW v1.0** · **ACE Flash Tool v1.0.1**
+> Latest: **ACE 2 Pro CFW v1.0.6** · **ACE 1 Pro CFW v1.1.1** · **ACE Flash Tool v1.0.3**
 
 ---
 
@@ -15,12 +15,13 @@ management systems (GD32F303, FreeRTOS).
 Each generation has its own firmware:
 
 - **ACE 1 Pro (Gen 1):** `ACE_V…_….bin` — KlipperGo-stack printers (e.g. Kobra 3, Kobra S1)
-- **ACE 2 Pro (Gen 2):** `ACE2_V…_….bin` — AVATA-stack printers (e.g. Kobra X)
+- **ACE 2 Pro (Gen 2):** `ACE2_V…_….bin` — AVATA-stack printers (e.g. Kobra X) and KlipperGo-stack
+  printers with ACE 2 Pro support (e.g. Kobra S1 Max)
 
 Flashing the **wrong generation's** firmware onto an ACE **will soft-brick the device**. The Flash
-Tool blocks obvious mismatches (a `ACE_V…` Gen 1 image on an AVATA printer, or an `ACE2_V…` Gen 2
-image on a KlipperGo printer), but this is a safeguard — **it remains your responsibility to check
-which ACE you own and pick the matching `.bin`.**
+Tool blocks obvious mismatches (a `ACE_V…` Gen 1 image on an AVATA printer, or — when the printer
+reports the model of the connected ACE — an image that does not match that ACE), but this is a
+safeguard — **it remains your responsibility to check which ACE you own and pick the matching `.bin`.**
 
 > Recovery without a hardware flash programmer is normally possible: an OTA flash never overwrites the
 > bootloader, so a unit that fails to boot falls back to update mode and can be re-flashed over the

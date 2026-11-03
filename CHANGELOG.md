@@ -7,6 +7,29 @@ filament systems (ACE 1 Pro and ACE 2 Pro).
 
 ## ACE Flash Tool
 
+### v1.0.3 — 2026-11-03
+
+#### Fixed
+- Flashing the **Kobra S1 Max** failed with `update-failed` (code `10802`) right after the
+  download ([#1](https://github.com/Jupsi/OpenCubic/issues/1)): the printer (model id `20029`)
+  was not recognized, so the tool sent the raw `.bin` instead of the KlipperGo OTA container
+  the printer expects. `20029` is now recognized as a KlipperGo-stack printer.
+- **Kobra S1 V2** (`20031`) was wrongly treated as an AVATA-stack printer and **Kobra 3 Max V2**
+  (`20032`) was not recognized at all. Both are now recognized as KlipperGo-stack printers.
+
+#### Changed
+- **ACE 2 Pro on KlipperGo-stack printers:** newer KlipperGo printer firmware (e.g. Kobra S1 Max)
+  supports the ACE 2 Pro, using the same OTA container for `ACE_V…` and `ACE2_V…` images.
+  The v1.0.1 rule "KlipperGo stack + `ACE2_V…` image → blocked" has been removed; the mismatch guard
+  is now:
+  - AVATA stack + `ACE_V…` (Gen 1) image → blocked (unchanged)
+  - KlipperGo stack → `ACE_V…` and `ACE2_V…` images **allowed**
+  - If the printer reports the model of the connected ACE (`model_id`, newer printer firmware),
+    the image must match the selected ACE (`ACE_V…` ↔ ACE 1 Pro, `ACE2_V…` ↔ ACE 2 Pro);
+    otherwise flashing is blocked and the reason is shown in the log.
+- Test Connection now shows the model of each connected ACE (e.g. `model=ACE 2 Pro`) when the
+  printer reports it.
+
 ### v1.0.2 — 2026-08-17
 
 #### Fixed
