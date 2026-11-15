@@ -57,6 +57,22 @@ filament systems (ACE 1 Pro and ACE 2 Pro).
 
 ## CFW — ACE 2 Pro
 
+### v1.0.7 — 2026-11-03
+
+> Based on official stock firmware **V1.1.31**. Reports version `V1.0.0` to the printer.
+
+#### Changed
+- **OpenSpool: one SKU per spool** instead of the constant `OPENSPOOL`
+  ([#4](https://github.com/Jupsi/OpenCubic/issues/4)). The `sku` is the only per-slot text that
+  reaches the printer and host tools, so all OpenSpool spools used to look identical. Now:
+  - `OS-<spool_id>` if the tag has a `spool_id` (1–16 characters `A-Z a-z 0-9 . _ -`, e.g. a Spoolman ID → `OS-24`)
+  - otherwise `OS-<UID>`: the tag's chip UID in uppercase hex (e.g. `OS-04A1B2C3D4E5F6`)
+  - `OPENSPOOL` only if neither is available (previous behaviour)
+
+  Longer or unusual `spool_id` values fall back to the UID instead of being cut off.
+  Side effect: the printer's remaining-filament estimate is now kept per spool.
+  Thanks to Godless50 for the UID idea ([#7](https://github.com/Jupsi/OpenCubic/pull/7)).
+
 ### v1.0.6 — 2026-08-17
 
 > Based on official stock firmware **V1.1.31**. Reports version `V1.0.0` to the printer
@@ -111,6 +127,22 @@ filament systems (ACE 1 Pro and ACE 2 Pro).
 ---
 
 ## CFW — ACE 1 Pro
+
+### v1.1.2 — 2026-11-03
+
+> Based on official Anycubic ACE firmware **v1.3.863**
+
+#### Changed
+- **OpenSpool: one SKU per spool** instead of the constant `OPENSPOOL`
+  ([#4](https://github.com/Jupsi/OpenCubic/issues/4)). The `sku` is the only per-slot text that
+  reaches the printer and host tools (e.g. Rinkhals / Spoolman), so all OpenSpool spools used to
+  look identical and a spool swap could not be detected. Now:
+  - `OS-<spool_id>` if the tag has a `spool_id` (1–16 characters `A-Z a-z 0-9 . _ -`, e.g. a Spoolman ID → `OS-24`)
+  - otherwise `OS-<UID>`: the tag's chip UID in uppercase hex (e.g. `OS-04A1B2C3D4E5F6`)
+  - `OPENSPOOL` only if neither is available (previous behaviour)
+
+  Longer or unusual `spool_id` values fall back to the UID instead of being cut off.
+  Thanks to Godless50 for the UID idea ([#7](https://github.com/Jupsi/OpenCubic/pull/7)).
 
 ### v1.1.1 — 2026-08-17
 

@@ -4,7 +4,7 @@ Custom firmware (CFW) for the Anycubic **ACE 1 Pro** (Gen 1) and **ACE 2 Pro** (
 management systems (GD32F303, FreeRTOS).
 
 > **Download the latest firmware:** See [Releases](https://github.com/Jupsi/OpenCubic/releases)  
-> Latest: **ACE 2 Pro CFW v1.0.6** · **ACE 1 Pro CFW v1.1.1** · **ACE Flash Tool v1.0.3**
+> Latest: **ACE 2 Pro CFW v1.0.7** · **ACE 1 Pro CFW v1.1.2** · **ACE Flash Tool v1.0.3**
 
 ---
 
