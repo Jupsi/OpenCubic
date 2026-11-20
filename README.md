@@ -92,6 +92,50 @@ cmake -S . -B build \
   -DOPENSSL_SRC="C:/Qt/Tools/QtCreator/bin"
 ```
 
+#### Building on macOS / Linux (community-supported)
+
+Official releases are **Windows only**. The Flash Tool also builds on macOS and Linux, but these
+builds are not tested by the maintainer — use at your own risk. macOS support was contributed by
+[@ozgunawesome](https://github.com/ozgunawesome) ([#6](https://github.com/Jupsi/OpenCubic/pull/6)).
+
+The MQTT client is a git submodule — clone with submodules first (on every platform):
+
+```bash
+git clone --recurse-submodules https://github.com/Jupsi/OpenCubic.git
+# or, in an existing clone:
+git submodule update --init
+```
+
+**macOS** (Apple Silicon or Intel, [Homebrew](https://brew.sh)):
+
+```bash
+brew install cmake qt@5
+cd flashtool
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt@5)"
+cmake --build build
+open build/AceFlashTool.app
+```
+
+- The app is signed **ad-hoc** by default (required on Apple Silicon, no Apple account needed).
+  To sign with your own identity: `-DACEFLASHTOOL_CODESIGN_IDENTITY="Apple Development: …"`.
+- On first start, allow **Local Network** access when macOS asks — otherwise the printer can't be found.
+- The app links against your Homebrew Qt. To get a self-contained `.app`, run
+  `"$(brew --prefix qt@5)/bin/macdeployqt" build/AceFlashTool.app` and re-sign it.
+
+**Linux** (Debian/Ubuntu example):
+
+```bash
+sudo apt install build-essential cmake qtbase5-dev libssl-dev
+cd flashtool
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/AceFlashTool
+```
+
+On all platforms the printer must be in **LAN mode** (the discovery port 18910 is closed in cloud mode),
+and your firewall must allow incoming connections — the printer downloads the firmware from the tool's
+built-in HTTP server.
+
 ---
 
 ## Firmware Source

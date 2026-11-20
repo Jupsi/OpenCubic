@@ -6,3 +6,4 @@ flashtool/third_party/qmqtt/
 *.hex
 *.zip
 .vscode/settings.json
+.DS_Store
