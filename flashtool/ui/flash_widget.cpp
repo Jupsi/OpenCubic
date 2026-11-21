@@ -326,7 +326,11 @@ void FlashWidget::onBrowseClicked()
         this, QStringLiteral("Select Firmware"), {},
         QStringLiteral("Firmware (ACE_V*.bin ACE2_V*.bin *.swu);;All Files (*)"));
     if (path.isEmpty()) return;
+    loadFirmware(path);
+}
 
+void FlashWidget::loadFirmware(const QString& path)
+{
     m_fw = FirmwareFile::load(path);
     ui->labelFile->setText(m_fw.name);
     updateAceIdSpinner();
@@ -389,7 +393,11 @@ void FlashWidget::onFlashClicked()
     m_http.stop();
     connect(&m_http, &HttpServer::httpLog, this, &FlashWidget::appendHttpLog,
             Qt::UniqueConnection);
-    if (!m_http.start(container, serveName, m_creds.ip)) {
+    // Optional fixed port / address for firewalls and containers (same as the CLI's
+    // --http-port / --local-ip): ACEFLASH_HTTP_PORT, ACEFLASH_LOCAL_IP
+    const quint16 httpPort = quint16(qEnvironmentVariableIntValue("ACEFLASH_HTTP_PORT"));
+    const QString localIp  = qEnvironmentVariable("ACEFLASH_LOCAL_IP");
+    if (!m_http.start(container, serveName, m_creds.ip, httpPort, localIp)) {
         QMessageBox::critical(this, QStringLiteral("Error"), QStringLiteral("Failed to start HTTP server."));
         return;
     }
