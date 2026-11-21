@@ -1,0 +1,6 @@
+# Build/test image for aceflash on Arch Linux.
+#   docker compose -f ci/compose.yaml run --rm test-arch
+FROM archlinux:latest
+RUN pacman -Syu --noconfirm --needed cmake ninja gcc qt6-base openssl unzip tar xorg-server-xvfb xorg-xauth ttf-dejavu \
+    && pacman -Scc --noconfirm
+CMD ["bash", "-c", "cp -r /src/flashtool /w && cd /w && cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug && cmake --build build && ctest --test-dir build --output-on-failure"]

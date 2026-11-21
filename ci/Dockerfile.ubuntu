@@ -1,0 +1,9 @@
+# Build/test image for aceflash on Ubuntu (24.04 LTS default).
+#   docker compose -f ci/compose.yaml run --rm test-ubuntu
+ARG UBUNTU=24.04
+FROM ubuntu:${UBUNTU}
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        cmake ninja-build g++ qt6-base-dev libssl-dev unzip tar ca-certificates \
+        qt6-qpa-plugins xvfb xauth fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+CMD ["bash", "-c", "cp -r /src/flashtool /w && cd /w && cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug && cmake --build build && ctest --test-dir build --output-on-failure"]

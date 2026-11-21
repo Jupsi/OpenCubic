@@ -10,3 +10,5 @@ flashtool/third_party/qmqtt/
 # Local code-intelligence indexes
 .codegraph/
 .serena/
+ci/shots/
+build-host/
