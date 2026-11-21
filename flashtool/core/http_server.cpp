@@ -31,13 +31,14 @@ QString HttpServer::localIpFor(const QString& hintIp)
 }
 
 bool HttpServer::start(const QByteArray& data, const QString& filename,
-                        const QString& hintIp)
+                        const QString& hintIp, quint16 port,
+                        const QString& localIp)
 {
     m_data     = data;
     m_filename = filename;
-    m_localIp  = localIpFor(hintIp);
+    m_localIp  = localIp.isEmpty() ? localIpFor(hintIp) : localIp;
 
-    if (!m_server.listen(QHostAddress::Any, 0)) {
+    if (!m_server.listen(QHostAddress::AnyIPv4, port)) {
         emit httpLog(QStringLiteral("HTTP server listen failed: ")
                      + m_server.errorString());
         return false;

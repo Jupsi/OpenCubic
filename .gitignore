@@ -6,3 +6,7 @@ flashtool/third_party/qmqtt/
 *.hex
 *.zip
 .vscode/settings.json
+
+# Local code-intelligence indexes
+.codegraph/
+.serena/

@@ -1,4 +1,5 @@
 #include "firmware_packager.h"
+#include "crypto.h"
 #include <QRandomGenerator>
 #include <QDateTime>
 #include <string.h>
@@ -253,9 +254,8 @@ QByteArray FirmwarePackager::makeTar(const QByteArray& data, const QString& name
 
 // ── Stack-specific packaging ──────────────────────────────────────────────────
 
-// Password from ota.go: const unzippd = "U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w="
-static const QString KLIPPER_ZIP_PASSWORD =
-    QStringLiteral("U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w=");
+// Password from ota.go — shared with tests via core/crypto.h
+static const QString KLIPPER_ZIP_PASSWORD = QString::fromLatin1(aceflash::kKlipperZipPassword);
 
 QByteArray FirmwarePackager::packageKlipperGo(const QByteArray& binData,
                                                const QString&    binName)

@@ -1,6 +1,7 @@
 #include "flash_widget.h"
 #include "ui_flash_widget.h"
 #include "../core/firmware_packager.h"
+#include "../core/flash_session.h"
 #include <QFileDialog>
 #include <QFile>
 #include <QMessageBox>
@@ -92,26 +93,9 @@ void FlashWidget::updateAceIdSpinner()
 
 QString FlashWidget::mismatchReason() const
 {
-    const bool isAce = (m_fw.target == FlashTarget::AceGen1 || m_fw.target == FlashTarget::AceGen2);
-    if (!isAce) return {};
-
-    // AVATA stack only drives ACE 2 Pro (Gen 2).
-    // KlipperGo stack drives both generations (newer printer FW, e.g. Kobra S1 Max with ACE 2 Pro);
-    // the OTA container is identical for ACE_V... and ACE2_V... images.
-    if (m_creds.stack() == PrinterStack::Avata && m_fw.target == FlashTarget::AceGen1)
-        return QStringLiteral("AVATA stack (ACE 2 Pro) needs an ACE2_V... image.");
-
-    // If the printer reports the hub model, the image must match the selected ACE.
-    const int aceId = ui->spinAceId->value();
-    const int hubModel = m_aceModelIds.value(aceId, 0);
-    const int fwModel  = (m_fw.target == FlashTarget::AceGen2) ? 40002 : 40001;
-    if ((hubModel == 40001 || hubModel == 40002) && hubModel != fwModel)
-        return QStringLiteral("ACE%1 is an %2, but the image is for an %3.")
-            .arg(aceId)
-            .arg(hubModel == 40002 ? QStringLiteral("ACE 2 Pro (Gen 2)") : QStringLiteral("ACE 1 Pro (Gen 1)"))
-            .arg(fwModel  == 40002 ? QStringLiteral("ACE 2 Pro (ACE2_V...)") : QStringLiteral("ACE 1 Pro (ACE_V...)"));
-
-    return {};
+    // Shared soft-brick guard (core/flash_session.cpp) — same rules as the CLI.
+    return aceflash::firmwareMismatch(m_creds.stack(), m_fw.target,
+                                      ui->spinAceId->value(), m_aceModelIds);
 }
 
 void FlashWidget::updateFlashButton()
@@ -297,18 +281,11 @@ void FlashWidget::onMqttMessage(const QString& topic, const QByteArray& payload)
 
     // ── Flash phase responses ─────────────────────────────────────────────────
     if (m_state == State::Flashing) {
+        const aceflash::OtaProgress p = aceflash::parseOtaReport(obj);
         log(QStringLiteral("[OTA] %1").arg(st));
-        if      (st == QStringLiteral("start"))            ui->progressBar->setValue(10);
-        else if (st == QStringLiteral("downloading"))      ui->progressBar->setValue(
-            10 + dat[QStringLiteral("progress")].toInt(0) * 0.6);
-        else if (st == QStringLiteral("download-success")) ui->progressBar->setValue(70);
-        else if (st == QStringLiteral("updating")) {
-            int p = dat[QStringLiteral("current_progress")].toInt(0);
-            ui->progressBar->setValue(70 + p * 0.29);
-        }
-        else if (st == QStringLiteral("update-success")) flashDone(true);
-        else if (st.contains(QStringLiteral("fail")) || st.contains(QStringLiteral("error")))
-            flashDone(false);
+        if (p.percent >= 0 && p.result != 1) ui->progressBar->setValue(p.percent);
+        if (p.result == 1)       flashDone(true);
+        else if (p.result == -1) flashDone(false);
     }
 }
 

@@ -37,10 +37,6 @@ signals:
 
 private:
     void postCtrl(const QString& ip, const QString& token);
-    static QByteArray aes128CbcDecrypt(const QByteArray& cipher,
-                                        const QByteArray& key,
-                                        const QByteArray& iv);
-    static QString md5Hex(const QByteArray& data);
 
     QNetworkAccessManager m_nam;
 };
