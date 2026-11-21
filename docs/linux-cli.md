@@ -82,7 +82,7 @@ docker compose -f ci/compose.yaml run --rm gui-debian    # + GUI build, Xvfb run
 
 `test-*` does a clean Debug build of `flashtool/` and runs the unit tests. `gui-*` also builds the
 GUI, runs the GUI smoke test offscreen and on Xvfb, starts the app, and saves screenshots to
-`ci/shots/<distro>/`; GitHub Actions (`.github/workflows/linux.yml`) runs the `gui-*` check for all
+`ci/shots/<distro>/`; GitHub Actions (`.github/workflows/build.yml`) runs the `gui-*` check for all
 three distros. Hardware tests are opt-in: `tst_gui liveConnectionTest` with
 `ACEFLASH_TEST_PRINTER_IP`, and `tst_gui liveFlash` (a **real flash**) additionally with
 `ACEFLASH_TEST_FLASH_FILE`. The `aceflash` service runs
