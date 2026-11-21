@@ -1,0 +1,95 @@
+# Debian build/test + containerised aceflash.
+#
+#   docker compose -f ci/compose.yaml run --rm test          # Debian (DEBIAN=bookworm|trixie)
+#   docker compose -f ci/compose.yaml run --rm test-ubuntu   # Ubuntu (UBUNTU=22.04|24.04)
+#   docker compose -f ci/compose.yaml run --rm test-arch     # Arch Linux (rolling)
+#   docker compose -f ci/compose.yaml run --rm gui-debian    # GUI build + Xvfb run (also gui-ubuntu, gui-arch)
+#   docker compose -f ci/compose.yaml run --rm aceflash test --ip 192.168.1.50
+#   ACEFLASH_FW_DIR=~/Downloads docker compose -f ci/compose.yaml run --rm --service-ports \
+#       aceflash flash --ip 192.168.1.50 --file /fw/ACE_V1.3.863_20261103.bin \
+#       --http-port 8765 --local-ip <this-pc-lan-ip>
+#
+# --service-ports publishes 8765 so the printer can download the image (Docker-published
+# ports also pass ufw). Paths are relative to this file.
+
+x-image: &image
+  image: aceflash-debian:${DEBIAN:-trixie}
+  build:
+    context: ..
+    dockerfile: ci/Dockerfile.debian
+    args:
+      DEBIAN: ${DEBIAN:-trixie}
+
+x-ubuntu: &ubuntu
+  image: aceflash-ubuntu:${UBUNTU:-24.04}
+  build:
+    context: ..
+    dockerfile: ci/Dockerfile.ubuntu
+    args:
+      UBUNTU: ${UBUNTU:-24.04}
+
+x-arch: &arch
+  image: aceflash-arch:latest
+  build:
+    context: ..
+    dockerfile: ci/Dockerfile.arch
+
+services:
+  # Clean Debug build of everything + ctest
+  test:
+    <<: *image
+    volumes:
+      - ..:/src:ro
+
+  test-ubuntu:
+    <<: *ubuntu
+    volumes:
+      - ..:/src:ro
+
+  test-arch:
+    <<: *arch
+    volumes:
+      - ..:/src:ro
+
+  # GUI build + offscreen tests + run on Xvfb (xcb). Screenshots land in ci/shots/.
+  gui-debian:
+    <<: *image
+    command: ["/src/ci/gui-check.sh"]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
+
+  gui-ubuntu:
+    <<: *ubuntu
+    command: ["/src/ci/gui-check.sh"]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
+
+  gui-arch:
+    <<: *arch
+    command: ["/src/ci/gui-check.sh"]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
+
+  # Release build of the CLI (cached in a volume), then runs aceflash with the given args
+  aceflash:
+    <<: *image
+    entrypoint:
+      - bash
+      - -c
+      - >-
+        cmake -S /src/flashtool -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_TESTING=OFF >/dev/null &&
+        ninja -C /build aceflash >/dev/null &&
+        exec /build/aceflash "$$@"
+      - aceflash
+    command: ["--help"]
+    environment:
+      - ACEFLASH_IP
+      - LANG=C.UTF-8
+    ports:
+      - "${ACEFLASH_HTTP_PORT:-8765}:${ACEFLASH_HTTP_PORT:-8765}"
+    volumes:
+      - ../flashtool:/src/flashtool:ro
+      - ${ACEFLASH_FW_DIR:-../originalFirmware}:/fw:ro
+      - aceflash-build:/build
+
+volumes:
+  aceflash-build:
+  ccache:

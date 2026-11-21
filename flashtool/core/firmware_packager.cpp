@@ -1,6 +1,8 @@
 #include "firmware_packager.h"
+#include "crypto.h"
 #include <QRandomGenerator>
 #include <QDateTime>
+#include <cstdio>
 #include <string.h>
 
 // ── Printer stack detection ───────────────────────────────────────────────────
@@ -218,12 +220,12 @@ QByteArray FirmwarePackager::makeTar(const QByteArray& data, const QString& name
     memcpy(hdr + 116, "0000000", 7);
 
     // File size [124..135] — octal, null-terminated
-    qsnprintf(reinterpret_cast<char*>(hdr + 124), 12, "%011o",
-              static_cast<unsigned>(data.size()));
+    std::snprintf(reinterpret_cast<char*>(hdr + 124), 12, "%011o",
+                  static_cast<unsigned>(data.size()));
 
     // mtime [136..147] — Unix timestamp, octal
-    qsnprintf(reinterpret_cast<char*>(hdr + 136), 12, "%011llo",
-              static_cast<unsigned long long>(QDateTime::currentSecsSinceEpoch()));
+    std::snprintf(reinterpret_cast<char*>(hdr + 136), 12, "%011llo",
+                  static_cast<unsigned long long>(QDateTime::currentSecsSinceEpoch()));
 
     // Type flag [156] — '0' = regular file
     hdr[156] = '0';
@@ -235,7 +237,7 @@ QByteArray FirmwarePackager::makeTar(const QByteArray& data, const QString& name
     memset(hdr + 148, ' ', 8);
     uint32_t chk = 0;
     for (int i = 0; i < 512; ++i) chk += hdr[i];
-    qsnprintf(reinterpret_cast<char*>(hdr + 148), 8, "%06o", chk);
+    std::snprintf(reinterpret_cast<char*>(hdr + 148), 8, "%06o", chk);
     hdr[154] = '\0';
     hdr[155] = ' ';
 
@@ -253,9 +255,8 @@ QByteArray FirmwarePackager::makeTar(const QByteArray& data, const QString& name
 
 // ── Stack-specific packaging ──────────────────────────────────────────────────
 
-// Password from ota.go: const unzippd = "U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w="
-static const QString KLIPPER_ZIP_PASSWORD =
-    QStringLiteral("U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w=");
+// Password from ota.go — shared with tests via core/crypto.h
+static const QString KLIPPER_ZIP_PASSWORD = QString::fromLatin1(aceflash::kKlipperZipPassword);
 
 QByteArray FirmwarePackager::packageKlipperGo(const QByteArray& binData,
                                                const QString&    binName)

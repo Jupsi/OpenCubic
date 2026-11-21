@@ -27,8 +27,8 @@ target_compile_definitions(qmqtt PUBLIC MQTT_PROJECT_INCLUDE_SRC)
 target_include_directories(qmqtt PUBLIC "${QMQTT_DIR}/src/mqtt")
 
 target_link_libraries(qmqtt PUBLIC
-    Qt5::Core
-    Qt5::Network
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Network
 )
 
 set_target_properties(qmqtt PROPERTIES AUTOMOC ON)

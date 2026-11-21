@@ -71,7 +71,8 @@ Full details: [docs/supported-spools.md](docs/supported-spools.md)
 This repo contains the **ACE Flash Tool** — a Qt desktop application that flashes the firmware over
 your local network (MQTT via your printer), for both ACE generations.
 
-→ See [docs/how-to-flash.md](docs/how-to-flash.md)
+→ See [docs/how-to-flash.md](docs/how-to-flash.md)  
+→ Linux / command line: [docs/linux-cli.md](docs/linux-cli.md)
 
 ### Build the Flash Tool
 

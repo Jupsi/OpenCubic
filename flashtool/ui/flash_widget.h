@@ -21,6 +21,9 @@ public:
     // Called after HTTP discovery — starts MQTT test and keeps the connection alive
     void startTest(const PrinterCredentials& creds);
 
+    // Select the firmware image (Browse... uses this too)
+    void loadFirmware(const QString& path);
+
 signals:
     void statusUpdate(const QString& msg);   // → DiscoveryWidget::setStatus
 
