@@ -96,12 +96,21 @@ if(BUILD_TESTING)
     add_executable(tst_core tests/tst_core.cpp)
     target_link_libraries(tst_core PRIVATE aceflash_core Qt${QT_VERSION_MAJOR}::Test)
     add_test(NAME tst_core COMMAND tst_core)
+
+    if(BUILD_GUI)
+        # Headless GUI smoke test (offscreen platform; no display needed).
+        # Set ACEFLASH_SCREENSHOT_DIR to save a PNG of the main window.
+        add_executable(tst_gui tests/tst_gui.cpp)
+        target_link_libraries(tst_gui PRIVATE aceflash_ui Qt${QT_VERSION_MAJOR}::Test)
+        add_test(NAME tst_gui COMMAND tst_gui)
+        set_tests_properties(tst_gui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
 endif()
 
 # ── GUI ─────────────────────────────────────────────────────────────────────
 if(BUILD_GUI)
-    add_executable(AceFlashTool WIN32
-        main.cpp
+    # Widgets as a library so the GUI smoke test can link them too
+    add_library(aceflash_ui STATIC
         ui/mainwindow.cpp
         ui/discovery_widget.cpp
         ui/flash_widget.cpp
@@ -109,11 +118,13 @@ if(BUILD_GUI)
         ui/discovery_widget.ui
         ui/flash_widget.ui
     )
-    target_link_libraries(AceFlashTool PRIVATE
+    target_link_libraries(aceflash_ui PUBLIC
         aceflash_core
         Qt${QT_VERSION_MAJOR}::Gui
         Qt${QT_VERSION_MAJOR}::Widgets
     )
+    add_executable(AceFlashTool WIN32 main.cpp)
+    target_link_libraries(AceFlashTool PRIVATE aceflash_ui)
 endif()
 
 # OpenSSL 1.1.1 DLLs — not bundled with Qt 5.15 MSVC; typically found in Qt Creator's bin dir
