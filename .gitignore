@@ -7,8 +7,4 @@ flashtool/third_party/qmqtt/
 *.zip
 .vscode/settings.json
 
-# Local code-intelligence indexes
-.codegraph/
-.serena/
 ci/shots/
-build-host/
