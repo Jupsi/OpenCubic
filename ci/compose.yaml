@@ -55,17 +55,17 @@ services:
   gui-debian:
     <<: *image
     command: ["/src/ci/gui-check.sh"]
-    volumes: [ "..:/src:ro", "./shots:/shots" ]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
 
   gui-ubuntu:
     <<: *ubuntu
     command: ["/src/ci/gui-check.sh"]
-    volumes: [ "..:/src:ro", "./shots:/shots" ]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
 
   gui-arch:
     <<: *arch
     command: ["/src/ci/gui-check.sh"]
-    volumes: [ "..:/src:ro", "./shots:/shots" ]
+    volumes: [ "..:/src:ro", "./shots:/shots", "ccache:/root/.cache/ccache" ]
 
   # Release build of the CLI (cached in a volume), then runs aceflash with the given args
   aceflash:
@@ -92,3 +92,4 @@ services:
 
 volumes:
   aceflash-build:
+  ccache:

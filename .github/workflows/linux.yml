@@ -1,0 +1,60 @@
+name: Linux build
+
+on:
+  push:
+    paths: [ "flashtool/**", "ci/**", ".github/workflows/linux.yml" ]
+  pull_request:
+    paths: [ "flashtool/**", "ci/**", ".github/workflows/linux.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.distro }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian
+            dockerfile: ci/Dockerfile.debian
+          - distro: ubuntu
+            dockerfile: ci/Dockerfile.ubuntu
+          - distro: arch
+            dockerfile: ci/Dockerfile.arch
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Image layers (apt/pacman installs) cached across runs
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          tags: aceflash-${{ matrix.distro }}:ci
+          load: true
+          cache-from: type=gha,scope=${{ matrix.distro }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.distro }}
+
+      # CLI + GUI build, unit tests, offscreen + Xvfb GUI checks
+      - name: Build and test
+        run: |
+          mkdir -p shots
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/shots:/shots" \
+            aceflash-${{ matrix.distro }}:ci /src/ci/gui-check.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ matrix.distro }}
+          path: shots/
+          if-no-files-found: ignore
