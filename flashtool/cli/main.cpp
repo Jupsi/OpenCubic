@@ -158,8 +158,10 @@ int main(int argc, char* argv[])
             out() << stamp() << "OK  Flash successful. ACE reboots (~30 s).\n" << Qt::flush;
             app.exit(ExitOk);
         } else {
-            err() << stamp() << "ERR Flash failed: " << error << "\n"
-                  << "Recovery: reflash the original image from originalFirmware/.\n" << Qt::flush;
+            err() << stamp() << "ERR Flash failed: " << error << "\n";
+            if (session.updateStarted())
+                err() << "Recovery: reflash the original image from originalFirmware/.\n";
+            err() << Qt::flush;
             app.exit(ExitFlash);
         }
         session.disconnectFromPrinter();

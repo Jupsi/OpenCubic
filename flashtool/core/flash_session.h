@@ -58,6 +58,12 @@ QString flashPrecheck(PrinterStack stack, FlashTarget target, int aceId,
 bool isOtaReportFor(const QString& topic, const QString& reportTopic,
                     const QString& type, const QString& action);
 
+// Explanation for a failed OTA download when the printer never fetched the image
+// from this PC (requests == 0): almost always a local firewall. Empty = no hint.
+// httpPort is the configured --http-port (0 = random, a fixed port is suggested).
+QString downloadBlockedHint(const QString& otaState, int requests,
+                            const QString& printerIp, quint16 httpPort);
+
 struct SessionOptions {
     int     testTimeoutMs  = 15000;
     int     flashTimeoutMs = 10 * 60 * 1000;
@@ -85,6 +91,9 @@ public:
     QHash<int, int>           aceModelIds() const;
     bool                      printerFree() const { return m_printerFree; }
     QString                   printerFwVersion() const { return m_printerFw; }
+    // True once the printer reported the ACE write phase ("updating") in this flash.
+    // False after a failure means the ACE firmware was not touched.
+    bool                      updateStarted() const { return m_updateStarted; }
 
     void disconnectFromPrinter();
 
@@ -120,6 +129,7 @@ private:
     QString            m_printerFw;
     QString            m_reportTopic;
     QString            m_ip;   // user-supplied printer IP (known reachable)
+    bool               m_updateStarted = false;
 };
 
 } // namespace aceflash

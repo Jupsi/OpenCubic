@@ -18,9 +18,12 @@ public:
     void    stop();
     QString url()  const;
     int     port() const;
+    // Download requests received since the last start()
+    int     requestCount() const { return m_requests; }
 
 signals:
     void httpLog(const QString& entry);
+    void requestReceived(const QString& peer);
 
 private slots:
     void onNewConnection();
@@ -33,4 +36,5 @@ private:
     QByteArray  m_data;
     QString     m_filename;
     QString     m_localIp;
+    int         m_requests = 0;
 };

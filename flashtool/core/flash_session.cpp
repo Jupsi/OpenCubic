@@ -132,6 +132,27 @@ bool isOtaReportFor(const QString& topic, const QString& reportTopic,
         && action != QLatin1String("reportVersion");
 }
 
+QString downloadBlockedHint(const QString& otaState, int requests,
+                            const QString& printerIp, quint16 httpPort)
+{
+    if (requests > 0 || !otaState.contains(QLatin1String("download")))
+        return {};
+    const QString port = QString::number(httpPort ? httpPort : 8765);
+    QString hint = QStringLiteral(
+        "The printer never fetched the image from this PC - a firewall here is "
+        "probably blocking it. The ACE firmware was not changed.\n");
+    if (!httpPort)
+        hint += QStringLiteral("Re-run with --http-port %1 and allow that port, e.g.:\n").arg(port);
+    else
+        hint += QStringLiteral("Allow port %1 from the printer, e.g.:\n").arg(port);
+    hint += QStringLiteral(
+        "  ufw:       sudo ufw allow from %1 to any port %2 proto tcp\n"
+        "  firewalld: sudo firewall-cmd --add-rich-rule='rule family=\"ipv4\" source "
+        "address=\"%1\" port port=\"%2\" protocol=\"tcp\" accept'\n"
+        "See docs/linux-cli.md#firewall.").arg(printerIp, port);
+    return hint;
+}
+
 static QByteArray makeEnvelope(const QString& type, const QString& action)
 {
     QJsonObject obj;
@@ -161,6 +182,9 @@ FlashSession::FlashSession(SessionOptions opts, QObject* parent)
     connect(&m_mqtt, &MqttClient::error,           this, &FlashSession::onMqttError);
     connect(&m_mqtt, &MqttClient::mqttLog,         this, &FlashSession::trace);
     connect(&m_http, &HttpServer::httpLog,         this, &FlashSession::trace);
+    connect(&m_http, &HttpServer::requestReceived, this, [this](const QString& peer) {
+        emit log(QStringLiteral("  Printer %1 is downloading the image").arg(peer));
+    });
 
     connect(&m_timer, &QTimer::timeout, this, [this]() {
         if (m_state == State::Discovering || m_state == State::Testing)
@@ -309,9 +333,17 @@ void FlashSession::onMqttMessage(const QString& topic, const QByteArray& payload
         const OtaProgress p = parseOtaReport(obj);
         if (p.state.isEmpty()) return;
         emit log(QStringLiteral("[OTA] %1").arg(p.state));
+        if (p.state == QLatin1String("updating")) m_updateStarted = true;
         if (p.percent >= 0) emit flashProgress(p.percent, p.state);
-        if (p.result == 1)       finishFlash(true, {});
-        else if (p.result == -1) finishFlash(false, QStringLiteral("Printer reported: ") + p.state);
+        if (p.result == 1) {
+            finishFlash(true, {});
+        } else if (p.result == -1) {
+            QString why = QStringLiteral("Printer reported: ") + p.state;
+            const QString hint = downloadBlockedHint(p.state, m_http.requestCount(),
+                                                     m_ip, m_opts.httpPort);
+            if (!hint.isEmpty()) why += QLatin1Char('\n') + hint;
+            finishFlash(false, why);
+        }
     }
 }
 
@@ -374,6 +406,7 @@ bool FlashSession::startFlash(const FirmwareFile& fw, int aceId, QString* error)
         fw, m_http.url(), container.size(), md5Hex(container));
 
     m_mqtt.subscribe(m_reportTopic);
+    m_updateStarted = false;
     m_state = State::Flashing;
     m_timer.start(m_opts.flashTimeoutMs);
 

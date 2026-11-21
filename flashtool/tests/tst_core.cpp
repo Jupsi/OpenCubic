@@ -235,6 +235,30 @@ private slots:
         QVERIFY(!aceflash::isOtaReportFor("x/printer/public/1/D/info/report", mine, "info", "query"));
     }
 
+    // ── Firewall hint on failed download ────────────────────────────────────
+
+    void downloadBlockedHint()
+    {
+        const QString ip = "192.168.1.50";
+        // No request reached us + download failure -> hint with the rule
+        const QString h = aceflash::downloadBlockedHint("download-failed", 0, ip, 8765);
+        QVERIFY(h.contains("firewall"));
+        QVERIFY(h.contains("sudo ufw allow from 192.168.1.50 to any port 8765 proto tcp"));
+        QVERIFY(h.contains("firewall-cmd"));
+        QVERIFY(h.contains("not changed"));
+        QVERIFY(!h.contains("--http-port"));   // port already fixed
+
+        // Random port -> suggest a fixed one
+        const QString r = aceflash::downloadBlockedHint("download-failed", 0, ip, 0);
+        QVERIFY(r.contains("--http-port 8765"));
+        QVERIFY(r.contains("port 8765 proto tcp"));
+
+        // Printer did fetch the file -> not a firewall problem
+        QVERIFY(aceflash::downloadBlockedHint("download-failed", 1, ip, 8765).isEmpty());
+        // Failure after the download phase -> no hint
+        QVERIFY(aceflash::downloadBlockedHint("update-failed", 0, ip, 8765).isEmpty());
+    }
+
     // ── MQTT payload parsing ────────────────────────────────────────────────
 
     void parseAceInfo_units()

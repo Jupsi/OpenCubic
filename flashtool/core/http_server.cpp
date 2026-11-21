@@ -37,6 +37,7 @@ bool HttpServer::start(const QByteArray& data, const QString& filename,
     m_data     = data;
     m_filename = filename;
     m_localIp  = localIp.isEmpty() ? localIpFor(hintIp) : localIp;
+    m_requests = 0;
 
     if (!m_server.listen(QHostAddress::AnyIPv4, port)) {
         emit httpLog(QStringLiteral("HTTP server listen failed: ")
@@ -87,6 +88,8 @@ void HttpServer::onNewConnection()
 
         QString req = QString::fromLatin1(socket->readAll()).section("\r\n", 0, 0);
         emit httpLog(QStringLiteral("HTTP >> %1").arg(req));
+        ++m_requests;
+        emit requestReceived(socket->peerAddress().toString());
 
         QByteArray header;
         header += "HTTP/1.1 200 OK\r\n";
