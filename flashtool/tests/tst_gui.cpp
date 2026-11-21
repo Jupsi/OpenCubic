@@ -7,7 +7,9 @@
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QDir>
+#include <QProgressBar>
 #include "ui/mainwindow.h"
+#include "ui/flash_widget.h"
 
 class TstGui : public QObject {
     Q_OBJECT
@@ -81,6 +83,50 @@ private slots:
             QDir().mkpath(dir);
             w.grab().toImage().save(dir + QStringLiteral("/mainwindow-live.png"));
         }
+    }
+
+    // Opt-in REAL flash through the GUI. Only with an explicit image and printer:
+    //   ACEFLASH_TEST_PRINTER_IP=... ACEFLASH_TEST_FLASH_FILE=/fw/ACE_V....bin ./tst_gui liveFlash
+    // Behind a firewall also set ACEFLASH_HTTP_PORT (and ACEFLASH_LOCAL_IP in a container).
+    void liveFlash()
+    {
+        const QString ip   = qEnvironmentVariable("ACEFLASH_TEST_PRINTER_IP");
+        const QString file = qEnvironmentVariable("ACEFLASH_TEST_FLASH_FILE");
+        if (ip.isEmpty() || file.isEmpty())
+            QSKIP("set ACEFLASH_TEST_PRINTER_IP and ACEFLASH_TEST_FLASH_FILE to flash");
+
+        MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        auto* lineIp  = w.findChild<QLineEdit*>(QStringLiteral("lineIp"));
+        auto* btnTest = w.findChild<QPushButton*>(QStringLiteral("btnDiscover"));
+        auto* status  = w.findChild<QLabel*>(QStringLiteral("labelStatus"));
+        auto* flash   = w.findChild<FlashWidget*>();
+        auto* btnFlash = w.findChild<QPushButton*>(QStringLiteral("btnFlash"));
+        auto* bar     = w.findChild<QProgressBar*>(QStringLiteral("progressBar"));
+        auto* logView = w.findChild<QPlainTextEdit*>(QStringLiteral("logView"));
+        QVERIFY(lineIp && btnTest && status && flash && btnFlash && bar && logView);
+
+        lineIp->setText(ip);
+        QTest::mouseClick(btnTest, Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(status->text().endsWith(QLatin1String("connected")), 30000);
+
+        flash->loadFirmware(file);
+        QVERIFY2(btnFlash->isEnabled(), qPrintable(logView->toPlainText()));   // guards passed
+        QTest::mouseClick(btnFlash, Qt::LeftButton);
+
+        const auto done = [&] {
+            const QString l = logView->toPlainText();
+            return l.contains(QLatin1String("Flash successful")) || l.contains(QLatin1String("Flash failed"));
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(done(), 10 * 60 * 1000);
+        qInfo("%s", qPrintable(logView->toPlainText()));
+
+        const QString dir = qEnvironmentVariable("ACEFLASH_SCREENSHOT_DIR");
+        if (!dir.isEmpty()) w.grab().toImage().save(dir + QStringLiteral("/mainwindow-flash.png"));
+
+        QVERIFY(logView->toPlainText().contains(QLatin1String("Flash successful")));
+        QCOMPARE(bar->value(), 100);
     }
 };
 
