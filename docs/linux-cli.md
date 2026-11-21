@@ -13,11 +13,14 @@ aceflash flash --ip 192.168.1.50 --file ACE_V1.3.863_20261103.bin
 
 | Printer | Printer FW | ACE | Result |
 |---|---|---|---|
-| Kobra S1 (KlipperGo) | 2.7.2.7 | ACE 1 Pro (Gen 1) | `test` OK, `flash` CFW v1.1.2 OK |
+| Kobra S1 (KlipperGo) | 2.7.2.7 | ACE 1 Pro (Gen 1) | CLI `test` + `flash` CFW v1.1.2 OK; GUI Test Connection + flash OK (Debian, Ubuntu, Arch builds) |
 
 **Not tested on hardware:** ACE 2 Pro (Gen 2), the AVATA stack (Kobra X), Kobra S1 Max / K3 Max /
 other KlipperGo models, multiple ACE units. Those paths share code with the GUI and are covered by
 unit tests only. Reports welcome.
+
+The Qt GUI (`AceFlashTool`) also builds and runs on Linux with `-DBUILD_GUI=ON`; see
+[GUI on Linux](#gui-on-linux).
 
 ## Build
 
@@ -49,6 +52,24 @@ sudo cmake --install build        # optional: installs aceflash to /usr/local/bi
 CMake options: `BUILD_CLI` (ON), `BUILD_GUI` (OFF on Linux), `BUILD_TESTING` (ON),
 `ACEFLASH_QT_MAJOR` (`6` default on Linux, set `5` to force Qt 5).
 
+### GUI on Linux
+
+```bash
+cmake -S OpenCubic/flashtool -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_GUI=ON
+cmake --build build && ./build/AceFlashTool
+```
+
+On Debian/Ubuntu also install `qt6-qpa-plugins` (the X11/xcb platform plugin) if the window does
+not open; on a Wayland session without `qt6-wayland` Qt uses XWayland. The GUI picks a random HTTP
+port; behind a firewall start it with a fixed one (same meaning as the CLI's `--http-port` /
+`--local-ip`):
+
+```bash
+ACEFLASH_HTTP_PORT=8765 ./build/AceFlashTool
+```
+
+`ACEFLASH_LOCAL_IP` overrides the address the printer downloads from (needed in containers).
+
 Without installing anything on the host, build and test in Docker with
 [`ci/compose.yaml`](../ci/compose.yaml) (run from the repo root):
 
@@ -56,9 +77,15 @@ Without installing anything on the host, build and test in Docker with
 docker compose -f ci/compose.yaml run --rm test          # Debian trixie (DEBIAN=bookworm to switch)
 docker compose -f ci/compose.yaml run --rm test-ubuntu   # Ubuntu 24.04 (UBUNTU=<tag> to switch)
 docker compose -f ci/compose.yaml run --rm test-arch     # Arch Linux
+docker compose -f ci/compose.yaml run --rm gui-debian    # + GUI build, Xvfb run (gui-ubuntu, gui-arch)
 ```
 
-Each does a clean Debug build of `flashtool/` and runs the unit tests. The `aceflash` service runs
+`test-*` does a clean Debug build of `flashtool/` and runs the unit tests. `gui-*` also builds the
+GUI, runs the GUI smoke test offscreen and on Xvfb, starts the app, and saves screenshots to
+`ci/shots/<distro>/`; GitHub Actions (`.github/workflows/linux.yml`) runs the `gui-*` check for all
+three distros. Hardware tests are opt-in: `tst_gui liveConnectionTest` with
+`ACEFLASH_TEST_PRINTER_IP`, and `tst_gui liveFlash` (a **real flash**) additionally with
+`ACEFLASH_TEST_FLASH_FILE`. The `aceflash` service runs
 the CLI itself from a container:
 
 ```bash
